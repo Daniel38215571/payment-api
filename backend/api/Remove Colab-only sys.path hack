@@ -1,5 +1,5 @@
-import sys
-sys.path.insert(0, "/content/payments-api/backend")
+
+
 
 import uuid
 import json
