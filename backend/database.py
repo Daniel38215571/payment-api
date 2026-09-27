@@ -5,7 +5,8 @@ from sqlalchemy.orm import sessionmaker
 from models import Base
 
 
-DB_PATH = "/content/payments-api/backend/payments.db"
+import os
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "payments.db")
 DB_URL = "sqlite:///" + DB_PATH
 
 
