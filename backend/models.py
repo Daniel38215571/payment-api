@@ -49,3 +49,17 @@ class IdempotencyKey(Base):
     response_status = Column(Integer, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     expires_at = Column(DateTime, nullable=False)
+
+
+class LedgerEvent(Base):
+    __tablename__ = "ledger_events"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    payment_id = Column(String(36), ForeignKey("payments.id"), nullable=False, index=True)
+    event_type = Column(String(50), nullable=False, index=True)
+    amount_kobo = Column(Integer, nullable=False)
+    currency = Column(String(3), nullable=False)
+    event_time = Column(DateTime, nullable=False, default=datetime.utcnow)
+    correlation_id = Column(String(36), nullable=False, index=True)
+    status_event_id = Column(String(36), nullable=True)
+    payload = Column(JSON, nullable=True)

@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db, init_db
 from models import Payment, Event
+from ledger import ledger_events_for_transition
 from schemas import PaymentCreate, PaymentResponse, EventResponse
 from idempotency import check_key, store_response
 from state_machine import assert_transition, InvalidTransitionError
@@ -187,7 +188,8 @@ async def gateway_webhook(
     payment.status = new_status
     payment.updated_at = datetime.utcnow()
 
-    event = Event(
+    # 1) Build the status-change event
+    status_event = Event(
         payment_id=payment.id,
         event_type="STATUS_CHANGED",
         from_status=from_status,
@@ -195,7 +197,21 @@ async def gateway_webhook(
         payload=payload,
         created_at=datetime.utcnow(),
     )
-    db.add(event)
+    db.add(status_event)
+    db.flush()
+
+    # 2) Derive ledger events (only for terminal money states)
+    ledger_events = ledger_events_for_transition(
+        payment=payment,
+        from_status=from_status,
+        to_status=new_status,
+        correlation_id=status_event.id,
+        status_event_id=status_event.id,
+    )
+    for le in ledger_events:
+        db.add(le)
+
+    # 3) Atomic commit — both rows or neither
     db.commit()
     db.refresh(payment)
 
