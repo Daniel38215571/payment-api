@@ -90,7 +90,7 @@ The ledger test (test_ledger_emission.py) verifies:
 - [x] Payment API with state machine, idempotency, audit trail
 - [x] Ledger event emission on terminal money states
 - [x] Postings and journal entries (double-entry translation)
-- [ ] Balance queries ("what was the balance at time T?")
+- [x] Balance queries ("what was the balance at time T?")
 - [ ] Replay verification (rebuild ledger from events, compare to live)
 - [ ] Reconciliation engine wired to the ledger
 - [ ] Exception queue for reconciliation mismatches
