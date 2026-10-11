@@ -63,3 +63,28 @@ class LedgerEvent(Base):
     correlation_id = Column(String(36), nullable=False, index=True)
     status_event_id = Column(String(36), nullable=True)
     payload = Column(JSON, nullable=True)
+
+
+class JournalEntry(Base):
+    __tablename__ = "journal_entries"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    ledger_event_id = Column(String(36), ForeignKey("ledger_events.id"), nullable=False, index=True)
+    memo = Column(String(200), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    postings = relationship("Posting", back_populates="journal_entry", order_by="Posting.created_at")
+
+
+class Posting(Base):
+    __tablename__ = "postings"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    journal_entry_id = Column(String(36), ForeignKey("journal_entries.id"), nullable=False, index=True)
+    account_code = Column(String(20), nullable=False, index=True)
+    account_name = Column(String(80), nullable=False)
+    debit_kobo = Column(Integer, nullable=False, default=0)
+    credit_kobo = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    journal_entry = relationship("JournalEntry", back_populates="postings")

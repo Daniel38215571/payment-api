@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from database import get_db, init_db
 from models import Payment, Event
 from ledger import ledger_events_for_transition
+from ledger_postings import project_to_postings
 from schemas import PaymentCreate, PaymentResponse, EventResponse
 from idempotency import check_key, store_response
 from state_machine import assert_transition, InvalidTransitionError
@@ -210,8 +211,19 @@ async def gateway_webhook(
     )
     for le in ledger_events:
         db.add(le)
+        db.flush()   # assigns le.id without committing
 
-    # 3) Atomic commit — both rows or neither
+        # 3) Derive double-entry postings for each ledger event
+        journal_entry, postings = project_to_postings(le)
+        db.add(journal_entry)
+        db.flush()   # assigns journal_entry.id
+
+        for posting in postings:
+            posting.journal_entry_id = journal_entry.id
+            db.add(posting)
+
+    # 4) Atomic commit — status event, ledger event, journal entry,
+    #    and both postings all commit together, or none do.
     db.commit()
     db.refresh(payment)
 
