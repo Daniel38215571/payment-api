@@ -16,6 +16,7 @@ from models import Payment, Event
 from ledger import ledger_events_for_transition
 from ledger_postings import project_to_postings
 from balance import get_balance
+from replay import verify_replay
 from schemas import PaymentCreate, PaymentResponse, EventResponse
 from idempotency import check_key, store_response
 from state_machine import assert_transition, InvalidTransitionError
@@ -273,3 +274,19 @@ def get_account_balance(
             )
 
     return get_balance(db, account_code, as_of_dt)
+
+
+@app.get("/replay/verify")
+def replay_verify(db: Session = Depends(get_db)):
+    """
+    Rebuild the ledger from ledger_events and compare to live postings.
+
+    Returns:
+        {
+            "live_count": int,
+            "rebuilt_count": int,
+            "deterministic": bool,
+            "differences": [...]
+        }
+    """
+    return verify_replay(db)
