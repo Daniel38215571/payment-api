@@ -15,6 +15,7 @@ from database import get_db, init_db
 from models import Payment, Event
 from ledger import ledger_events_for_transition
 from ledger_postings import project_to_postings
+from balance import get_balance
 from schemas import PaymentCreate, PaymentResponse, EventResponse
 from idempotency import check_key, store_response
 from state_machine import assert_transition, InvalidTransitionError
@@ -233,3 +234,42 @@ async def gateway_webhook(
         "from_status": from_status,
         "to_status": new_status,
     }
+
+
+from datetime import datetime as _dt
+from typing import Optional as _Optional
+
+
+@app.get("/accounts/{account_code}/balance")
+def get_account_balance(
+    account_code: str,
+    as_of: _Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Return the balance of an account as of a given time.
+
+    Query params:
+        as_of: ISO 8601 timestamp. Defaults to now.
+
+    Response:
+        {
+            "account_code": "1000",
+            "as_of": "2026-10-11T12:00:00",
+            "total_debit": 50000,
+            "total_credit": 0,
+            "net": 50000
+        }
+    """
+    if as_of is None:
+        as_of_dt = _dt.utcnow()
+    else:
+        try:
+            as_of_dt = _dt.fromisoformat(as_of)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="as_of must be ISO 8601, e.g. 2026-10-11T12:00:00",
+            )
+
+    return get_balance(db, account_code, as_of_dt)
