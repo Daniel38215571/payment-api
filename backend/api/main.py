@@ -17,6 +17,7 @@ from ledger import ledger_events_for_transition
 from ledger_postings import project_to_postings
 from balance import get_balance
 from replay import verify_replay
+from reconciliation import reconcile
 from schemas import PaymentCreate, PaymentResponse, EventResponse
 from idempotency import check_key, store_response
 from state_machine import assert_transition, InvalidTransitionError
@@ -82,7 +83,7 @@ async def create_payment(
             )
 
     payment = Payment(
-        reference=_generate_reference(),
+        reference=payment_data.reference,
         amount_kobo=payment_data.amount_kobo,
         currency=payment_data.currency,
         customer_id=payment_data.customer_id,
@@ -290,3 +291,34 @@ def replay_verify(db: Session = Depends(get_db)):
         }
     """
     return verify_replay(db)
+
+
+from pydantic import BaseModel as _BaseModel
+
+
+class _SettlementRow(_BaseModel):
+    reference: str
+    amount_kobo: int
+
+
+class _ReconcileRequest(_BaseModel):
+    settlement_rows: list[_SettlementRow]
+
+
+@app.post("/reconcile/run")
+def reconcile_run(req: _ReconcileRequest, db: Session = Depends(get_db)):
+    """
+    Reconcile the ledger against an external settlement file.
+
+    Body:
+        {
+            "settlement_rows": [
+                {"reference": "PAY-001", "amount_kobo": 10000},
+                ...
+            ]
+        }
+
+    Returns a run summary and the list of exceptions.
+    """
+    rows = [r.model_dump() for r in req.settlement_rows]
+    return reconcile(db, rows)

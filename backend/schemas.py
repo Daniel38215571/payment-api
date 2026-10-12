@@ -4,6 +4,7 @@ from datetime import datetime
 
 
 class PaymentCreate(BaseModel):
+    reference: str = Field(..., min_length=1, max_length=64)
     amount_kobo: int = Field(..., gt=0)
     currency: str = Field(default="NGN", max_length=3, min_length=3)
     customer_id: str = Field(..., min_length=1, max_length=64)

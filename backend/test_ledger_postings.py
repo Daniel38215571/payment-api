@@ -31,8 +31,20 @@ def _sign(body: bytes) -> str:
     return hmac.new(HMAC_SECRET, body, hashlib.sha256).hexdigest()
 
 
+
 def setup_module(module):
+    """Wipe the database before this test file runs."""
     init_db()
+    from models import Posting, JournalEntry, LedgerEvent, Event, IdempotencyKey, Payment
+    db = SessionLocal()
+    db.query(Posting).delete()
+    db.query(JournalEntry).delete()
+    db.query(LedgerEvent).delete()
+    db.query(Event).delete()
+    db.query(IdempotencyKey).delete()
+    db.query(Payment).delete()
+    db.commit()
+    db.close()
 
 
 def test_completed_payment_creates_balanced_journal_entry():
