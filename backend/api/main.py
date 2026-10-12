@@ -12,6 +12,7 @@ from fastapi import FastAPI, Depends, Header, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from database import get_db, init_db
+from models import Exception
 from models import Payment, Event
 from ledger import ledger_events_for_transition
 from ledger_postings import project_to_postings
@@ -322,3 +323,78 @@ def reconcile_run(req: _ReconcileRequest, db: Session = Depends(get_db)):
     """
     rows = [r.model_dump() for r in req.settlement_rows]
     return reconcile(db, rows)
+
+
+@app.get("/exceptions")
+def list_exceptions(
+    status: _Optional[str] = None,
+    classification: _Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """
+    List exceptions, newest first. Optional filters by status and classification.
+    """
+    q = db.query(Exception)
+    if status:
+        q = q.filter(Exception.status == status)
+    if classification:
+        q = q.filter(Exception.classification == classification)
+    rows = q.order_by(Exception.created_at.desc()).all()
+
+    return {
+        "count": len(rows),
+        "items": [
+            {
+                "id": r.id,
+                "run_id": r.run_id,
+                "classification": r.classification,
+                "reference": r.reference,
+                "amount_kobo": r.amount_kobo,
+                "status": r.status,
+                "created_at": r.created_at.isoformat(),
+                "resolved_at": r.resolved_at.isoformat() if r.resolved_at else None,
+                "resolution_note": r.resolution_note,
+            }
+            for r in rows
+        ],
+    }
+
+
+class _ResolveRequest(_BaseModel):
+    note: str = ""
+
+
+@app.post("/exceptions/{exception_id}/resolve")
+def resolve_exception(
+    exception_id: str,
+    req: _ResolveRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Mark an exception as resolved with an optional note.
+    """
+    from datetime import datetime as _dt_now
+
+    row = db.query(Exception).filter(Exception.id == exception_id).first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Exception not found")
+
+    if row.status == "RESOLVED":
+        return {
+            "id": row.id,
+            "status": row.status,
+            "already_resolved": True,
+        }
+
+    row.status = "RESOLVED"
+    row.resolved_at = _dt_now.utcnow()
+    row.resolution_note = req.note or None
+    db.commit()
+    db.refresh(row)
+
+    return {
+        "id": row.id,
+        "status": row.status,
+        "resolved_at": row.resolved_at.isoformat(),
+        "resolution_note": row.resolution_note,
+    }

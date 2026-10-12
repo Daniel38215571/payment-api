@@ -18,6 +18,7 @@ Design principle:
 from collections import defaultdict
 from datetime import datetime
 from uuid import uuid4
+from models import Exception as ExceptionModel
 
 
 CLASSIFICATIONS = (
@@ -115,6 +116,20 @@ def reconcile(db, settlement_rows):
                 "internal_value": None,
                 "external_value": ext,
             })
+
+    # Persist every exception as a row in the exceptions table
+    for ex in exceptions:
+        row = ExceptionModel(
+            run_id=run_id,
+            classification=ex["classification"],
+            reference=ex["reference"],
+            amount_kobo=ex["amount_kobo"],
+            internal_value=ex["internal_value"],
+            external_value=ex["external_value"],
+            status="OPEN",
+        )
+        db.add(row)
+    db.commit()
 
     counts = {c: 0 for c in CLASSIFICATIONS}
     counts["MATCHED"] = matched

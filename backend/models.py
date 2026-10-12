@@ -88,3 +88,19 @@ class Posting(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     journal_entry = relationship("JournalEntry", back_populates="postings")
+
+
+class Exception(Base):
+    __tablename__ = "exceptions"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    run_id = Column(String(36), nullable=False, index=True)
+    classification = Column(String(40), nullable=False, index=True)
+    reference = Column(String(64), nullable=True, index=True)
+    amount_kobo = Column(Integer, nullable=True)
+    internal_value = Column(JSON, nullable=True)
+    external_value = Column(JSON, nullable=True)
+    status = Column(String(20), nullable=False, default="OPEN", index=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    resolved_at = Column(DateTime, nullable=True)
+    resolution_note = Column(String(500), nullable=True)
