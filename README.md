@@ -1,4 +1,6 @@
-# Payment Ledger and Reconciliation Service
+# Payment API
+
+Event-sourced payments backend with idempotency, state machine, and immutable audit trail.
 
 > **Thesis**: I build financial systems where every number can be traced to an event, every event can be replayed, and every balance can be reconciled against an external source of truth. My work is defensible under audit because correctness is architectural, not documented after the fact.
 
